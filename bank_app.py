@@ -83,3 +83,69 @@ class CurrentAccount(Account):
             return False, "Withdrawal amount must be positive"
 
         available_balance = self.balance + self.overdraft_limit
+        
+
+        if amount > available_balance:
+            return False, f"Insufficient funds. Available balance (including overdraft): ${available_balance:.2f}"
+
+        self.balance -= amount
+        self.add_transaction("WITHDRAWAL", amount, "Withdrawal from current account")
+        return True, f"Successfully withdrew ${amount:.2f}. New balance: ${self.balance:.2f}"
+
+
+# Initialize session state
+if 'accounts' not in st.session_state:
+    st.session_state.accounts = {}
+if 'current_account' not in st.session_state:
+    st.session_state.current_account = None
+
+
+def main():
+    st.set_page_config(page_title="Banking System", page_icon="🏦", layout="wide")
+
+    # Header
+    st.title("🏦 Banking System")
+    st.markdown("---")
+
+    # Sidebar for account selection
+    with st.sidebar:
+        st.header("Account Management")
+
+        # Create new account
+        with st.expander("Create New Account"):
+            account_type = st.selectbox("Account Type", ["Savings", "Current"])
+            account_holder = st.text_input("Account Holder Name")
+            initial_balance = st.number_input("Initial Balance", min_value=0.0, value=100.0, step=10.0)
+
+            if account_type == "Savings":
+                withdrawal_limit = st.number_input("Withdrawal Limit", min_value=1000.0, value=5000.0, step=500.0)
+            else:
+                overdraft_limit = st.number_input("Overdraft Limit", min_value=0.0, value=1000.0, step=100.0)
+
+            if st.button("Create Account"):
+                if account_holder:
+                    account_number = f"{account_type.upper()}{len(st.session_state.accounts) + 1:04d}"
+
+                    if account_type == "Savings":
+                        account = SavingsAccount(account_number, account_holder, initial_balance, withdrawal_limit)
+                    else:
+                        account = CurrentAccount(account_number, account_holder, initial_balance, overdraft_limit)
+
+                    st.session_state.accounts[account_number] = account
+                    st.success(f"Account {account_number} created successfully!")
+                else:
+                    st.error("Please enter account holder name")
+
+        # Select existing account
+        if st.session_state.accounts:
+            st.markdown("### Select Account")
+            account_options = [f"{acc_num} - {acc.account_holder} ({acc.account_type})"
+                               for acc_num, acc in st.session_state.accounts.items()]
+
+            selected_option = st.selectbox("Choose Account", [""] + account_options)
+
+            if selected_option:
+                account_number = selected_option.split(" - ")[0]
+                st.session_state.current_account = st.session_state.accounts[account_number]
+
+    
