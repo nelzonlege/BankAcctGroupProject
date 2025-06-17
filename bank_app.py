@@ -257,4 +257,15 @@ def main():
 
                 with col4:
                     st.write(f"${transaction['balance']:.2f}")
+                    
+                st.markdown("---")
+
+            if len(account.transaction_history) > 10:
+                st.info(f"Showing last 10 transactions. Total transactions: {len(account.transaction_history)}")
+        else:
+            st.info("No transactions yet. Make your first deposit or withdrawal!")
+
+
+if _name_ == "_main_":
+
     main()       
