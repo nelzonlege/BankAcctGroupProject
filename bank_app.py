@@ -197,4 +197,64 @@ def main():
 
         st.markdown("---")
 
-        
+ # Transaction operations
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("💰 Deposit")
+            deposit_amount = st.number_input("Deposit Amount", min_value=0.01, value=100.0, step=10.0, key="deposit")
+
+            if st.button("Make Deposit", type="primary"):
+                success, message = account.deposit(deposit_amount)
+                if success:
+                    st.success(message)
+                    st.rerun()
+                else:
+                    st.error(message)
+
+        with col2:
+            st.subheader("💸 Withdrawal")
+            withdraw_amount = st.number_input("Withdrawal Amount", min_value=0.01, value=50.0, step=10.0,
+                                              key="withdraw")
+
+            # Show withdrawal limit warning for savings accounts
+            if hasattr(account, 'withdrawal_limit'):
+                if withdraw_amount > account.withdrawal_limit:
+                    st.warning(f"⚠ Amount exceeds withdrawal limit of ${account.withdrawal_limit:.2f}")
+
+            if st.button("Make Withdrawal", type="secondary"):
+                success, message = account.withdraw(withdraw_amount)
+                if success:
+                    st.success(message)
+                    st.rerun()
+                else:
+                    st.error(message)
+
+        st.markdown("---")
+
+        # Transaction history
+        st.subheader("📊 Transaction History")
+
+        if account.transaction_history:
+            # Show recent transactions
+            recent_transactions = account.transaction_history[-10:]  # Last 10 transactions
+
+            for transaction in reversed(recent_transactions):
+                col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
+
+                with col1:
+                    st.write(f"{transaction['date']}")
+                    st.write(transaction['description'])
+
+                with col2:
+                    transaction_type = transaction['type']
+                    color = "🟢" if transaction_type == "DEPOSIT" else "🔴"
+                    st.write(f"{color} {transaction_type}")
+
+                with col3:
+                    amount_sign = "+" if transaction['type'] == "DEPOSIT" else "-"
+                    st.write(f"{amount_sign}${transaction['amount']:.2f}")
+
+                with col4:
+                    st.write(f"${transaction['balance']:.2f}")
+    main()       
