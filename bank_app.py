@@ -1,76 +1,85 @@
 import streamlit as st
+from datetime import datetime
+import json
 
-# ================================
-# 🏦 OOP: BankAccount Class
-# ================================
-class BankAccount:
-    def __init__(self, owner, account_type):
-        self.owner = owner
-        self.account_type = account_type  # 'Savings' or 'Current'
-        self.balance = 0.0
 
-    def deposit(self, amount):
-        if amount <= 0:
-            return "❌ Deposit must be greater than ₦0"
-        self.balance += amount
-        return f"✅ ₦{amount:,.2f} deposited to your {self.account_type} account."
+class Account:
+    """Base Account class"""
 
-    def withdraw(self, amount):
-        if amount <= 0:
-            return "❌ Withdrawal must be greater than ₦0"
-        if amount > self.balance:
-            return "❌ Insufficient balance"
-        self.balance -= amount
-        return f"💸 ₦{amount:,.2f} withdrawn from your {self.account_type} account."
+    def _init_(self, account_number, account_holder, initial_balance=0):
+        self.account_number = account_number
+        self.account_holder = account_holder
+        self.balance = initial_balance
+        self.transaction_history = []
+        self.created_date = datetime.now()
 
     def get_balance(self):
-        return f"💼 Your {self.account_type} account balance is ₦{self.balance:,.2f}"
+        return self.balance
 
-# ================================
-# 🖥️ Streamlit UI
-# ================================
-st.set_page_config(page_title="UnionEdge Bank", page_icon="🏦")
-st.title("🏦 UnionEdge Bank")
-st.markdown("#### 💳 Digital Banking for You — Secure, Smart & Simple")
+    def add_transaction(self, transaction_type, amount, description=""):
+        transaction = {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "type": transaction_type,
+            "amount": amount,
+            "balance": self.balance,
+            "description": description
+        }
+        self.transaction_history.append(transaction)
 
-# Keep account in session
-if 'account' not in st.session_state:
-    st.session_state.account = None
 
-# Step 1: Account Creation
-st.header("🧾 Open a Bank Account")
-name = st.text_input("👤 Enter your full name:")
-account_type = st.selectbox("🏷️ Choose account type:", ["Savings", "Current"])
+class SavingsAccount(Account):
+    """Savings Account with withdrawal limit"""
 
-if st.button("🆕 Create Account"):
-    if name.strip() == "":
-        st.error("Please enter your name.")
-    else:
-        st.session_state.account = BankAccount(name, account_type)
-        st.success(f"🎉 Account created for **{name}** ({account_type})")
+    def _init_(self, account_number, account_holder, initial_balance=0, withdrawal_limit=5000):
+        super()._init_(account_number, account_holder, initial_balance)
+        self.account_type = "Savings"
+        self.withdrawal_limit = withdrawal_limit
 
-# Step 2: Transactions
-if st.session_state.account:
-    st.divider()
-    st.header("💰 Manage Your Account")
-    st.markdown(f"👋 Hello **{st.session_state.account.owner}** | Account Type: **{st.session_state.account.account_type}**")
+    def deposit(self, amount):
+        """Deposit method for savings account"""
+        if amount <= 0:
+            return False, "Deposit amount must be positive"
 
-    amount = st.number_input("Enter amount (₦)", min_value=0.0, step=100.0)
+        self.balance += amount
+        self.add_transaction("DEPOSIT", amount, "Deposit to savings account")
+        return True, f"Successfully deposited ${amount:.2f}. New balance: ${self.balance:.2f}"
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("➕ Deposit"):
-            msg = st.session_state.account.deposit(amount)
-            st.success(msg)
+    def withdraw(self, amount):
+        """Withdrawal method with limit for savings account"""
+        if amount <= 0:
+            return False, "Withdrawal amount must be positive"
 
-    with col2:
-        if st.button("➖ Withdraw"):
-            msg = st.session_state.account.withdraw(amount)
-            st.warning(msg)
+        if amount > self.withdrawal_limit:
+            return False, f"Withdrawal amount exceeds limit of ${self.withdrawal_limit:.2f}"
 
-    with col3:
-        if st.button("📊 Check Balance"):
-            msg = st.session_state.account.get_balance()
-            st.info(msg)
+        if amount > self.balance:
+            return False, "Insufficient funds"
 
-    st.caption("🔐 Secured by UnionEdge Bank | Built with 💙 and Python 🐍")
+        self.balance -= amount
+        self.add_transaction("WITHDRAWAL", amount, "Withdrawal from savings account")
+        return True, f"Successfully withdrew ${amount:.2f}. New balance: ${self.balance:.2f}"
+
+
+class CurrentAccount(Account):
+    """Current Account with overdraft facility"""
+
+    def _init_(self, account_number, account_holder, initial_balance=0, overdraft_limit=1000):
+        super()._init_(account_number, account_holder, initial_balance)
+        self.account_type = "Current"
+        self.overdraft_limit = overdraft_limit
+
+    def deposit(self, amount):
+        """Deposit method for current account"""
+        if amount <= 0:
+            return False, "Deposit amount must be positive"
+
+        self.balance += amount
+        self.add_transaction("DEPOSIT", amount, "Deposit to current account")
+        return True, f"Successfully deposited ${amount:.2f}. New balance: ${self.balance:.2f}"
+
+    def withdraw(self, amount):
+        """Withdrawal method for current account with overdraft"""
+        if amount <= 0:
+            return False, "Withdrawal amount must be positive"
+
+        available_balance = self.balance + self.overdraft_limit
