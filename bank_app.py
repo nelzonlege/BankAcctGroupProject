@@ -148,4 +148,53 @@ def main():
                 account_number = selected_option.split(" - ")[0]
                 st.session_state.current_account = st.session_state.accounts[account_number]
 
-    
+  # Main content area
+    if st.session_state.current_account is None:
+        st.info("👈 Please create or select an account from the sidebar to get started.")
+
+        # Show overview of all accounts if any exist
+        if st.session_state.accounts:
+            st.subheader("All Accounts Overview")
+
+            for acc_num, account in st.session_state.accounts.items():
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Account", acc_num)
+                with col2:
+                    st.metric("Holder", account.account_holder)
+                with col3:
+                    st.metric("Type", account.account_type)
+                with col4:
+                    st.metric("Balance", f"${account.balance:.2f}")
+                st.markdown("---")
+
+    else:
+        account = st.session_state.current_account
+
+        # Account information
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader(f"Account Details")
+            st.write(f"**Account Number:** {account.account_number}")
+            st.write(f"**Account Holder:** {account.account_holder}")
+            st.write(f"**Account Type:** {account.account_type}")
+            st.write(f"**Current Balance:** ${account.balance:.2f}")
+
+            if hasattr(account, 'withdrawal_limit'):
+                st.write(f"**Withdrawal Limit:** ${account.withdrawal_limit:.2f}")
+            if hasattr(account, 'overdraft_limit'):
+                st.write(f"**Overdraft Limit:** ${account.overdraft_limit:.2f}")
+
+        with col2:
+            st.subheader("Quick Stats")
+            total_deposits = sum([t['amount'] for t in account.transaction_history if t['type'] == 'DEPOSIT'])
+            total_withdrawals = sum([t['amount'] for t in account.transaction_history if t['type'] == 'WITHDRAWAL'])
+
+            st.metric("Total Deposits", f"${total_deposits:.2f}")
+            st.metric("Total Withdrawals", f"${total_withdrawals:.2f}")
+            st.metric("Transaction Count", len(account.transaction_history))
+
+        st.markdown("---")
+
+        
